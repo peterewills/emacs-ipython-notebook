@@ -63,6 +63,16 @@ is still under the threshold.")
   :type 'boolean
   :group 'ein)
 
+(defcustom ein:auto-save-on-execute nil
+  "When t, then notebook saves on each cell execution"
+  :type 'boolean
+  :group 'ein)
+
+(defcustom ein:auto-black-on-execute nil
+  "When t, then notebook runs python-black on cell on execution"
+  :type 'boolean
+  :group 'ein)
+
 (ein:deflocal buffer-local-enable-undo t
   "Buffer local variable activating undo accounting.  Should not modify.")
 
@@ -1022,18 +1032,24 @@ Do not clear input prompts when the prefix argument is given."
                  ,(when current-prefix-arg
                     (prog1 (read-char-choice "[RET]all [a]bove [b]elow: " (list ?\r ?a ?b))
                       (message "")))))
-  (ein:kernel-when-ready (slot-value ws 'kernel)
-                         (apply-partially
-                          (lambda (ws* cell* batch* _kernel)
-                            (cl-case batch*
-                              (?\r (ein:worksheet-execute-all-cells ws*))
-                              (?a (ein:worksheet-execute-all-cells ws* :above cell*))
-                              (?b (ein:worksheet-execute-all-cells ws* :below cell*))
-                              (t (ein:cell-execute cell*)
-                                 (setf (oref ws* :dirty) t)
-                                 (ein:worksheet--unshift-undo-list cell*))))
-                          ws cell batch))
-  cell)
+  (progn
+    (if ein:auto-black-on-execute
+        (ein:worksheet-python-black-cell cell))
+    (ein:kernel-when-ready (slot-value ws 'kernel)
+                           (progn
+                             (if ein:auto-save-on-execute
+                                 (ein:notebook-save-notebook-command-km))
+                             (apply-partially
+                              (lambda (ws* cell* batch* _kernel)
+                                (cl-case batch*
+                                  (?\r (ein:worksheet-execute-all-cells ws*))
+                                  (?a (ein:worksheet-execute-all-cells ws* :above cell*))
+                                  (?b (ein:worksheet-execute-all-cells ws* :below cell*))
+                                  (t (ein:cell-execute cell*)
+                                     (setf (oref ws* :dirty) t)
+                                     (ein:worksheet--unshift-undo-list cell*))))
+                              ws cell batch)))
+    cell))
 
 (defun ein:worksheet-execute-cell-and-goto-next (ws cell &optional insert)
   "Execute cell at point if it is a code cell and move to the
@@ -1131,6 +1147,14 @@ current worksheet buffer."
          (end (ein:cell-input-pos-max cell)))
     (indent-rigidly
      beg end (- (ein:find-leftmost-column beg end)))))
+
+
+(defun ein:worksheet-python-black-cell (cell &optional display-errors)
+  "Apply python-black-region to text in CELL."
+  (interactive (list (ein:worksheet-get-current-cell)))
+  (let* ((beg (ein:cell-input-pos-min cell))
+         (end (ein:cell-input-pos-max cell)))
+    (python-black-region beg (1+ end) display-errors)))
 
 ;;; Workarounds
 

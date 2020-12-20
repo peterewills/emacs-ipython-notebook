@@ -62,6 +62,62 @@
 
 (make-obsolete-variable 'ein:notebook-after-rename-hook nil "0.17.0")
 
+(defconst ein:blank-notebook-template "{
+ \"cells\": [
+  {
+   \"cell_type\": \"code\",
+   \"execution_count\": null,
+   \"metadata\": {
+    \"autoscroll\": false,
+    \"collapsed\": false,
+    \"ein.hycell\": false,
+    \"ein.tags\": \"worksheet-0\",
+    \"slideshow\": {
+     \"slide_type\": \"-\"
+    }
+   },
+   \"outputs\": [],
+   \"source\": []
+  }
+ ],
+ \"metadata\": {
+  \"kernelspec\": {
+   \"argv\": [
+    \"python\",
+    \"-m\",
+    \"ipykernel_launcher\",
+    \"-f\",
+    \"{connection_file}\"
+   ],
+   \"display_name\": \"Python 3\",
+   \"env\": null,
+   \"interrupt_mode\": \"signal\",
+   \"language\": \"python\",
+   \"metadata\": null,
+   \"name\": \"python3\"
+  },
+  \"name\": \"%s\"
+ },
+ \"nbformat\": 4,
+ \"nbformat_minor\": 2
+}")
+
+(defun ein:get-blank-notebook-string (filename)
+  "Generate the contents of a new-notebook file."
+  (format ein:blank-notebook-template filename))
+
+;;;###autoload
+(defun ein:new-notebook (path)
+  "Write a new notebook to PATH, and visit that file."
+  (interactive "FCreate new notebook: ")
+  (when
+      (not (string-suffix-p ".ipynb" path))
+    (setq path (concat path ".ipynb"))
+    (let ((filename
+           (car (last (split-string "/Users/peterwills/tmp.tmp" "/")))))
+      (write-region (ein:get-blank-notebook-string filename) nil path))
+    (find-file path)))
+
 (defvar *ein:notebook--pending-query* (make-hash-table :test 'equal)
   "A map: (URL-OR-PORT . PATH) => t/nil")
 
@@ -369,6 +425,24 @@ notebook buffer then the user will be prompted to select an opened notebook."
    "It seems convenient but undisciplined to blithely create a new session if the original one no longer exists."
    (interactive)
    (ein:kernel-reconnect-session (ein:$notebook-kernel ein:%notebook%)))
+
+(defun ein:nuke-and-pave ()
+  (interactive)
+  (aif ein:%notebook%
+      (if (y-or-n-p "Are you sure? ")
+          (progn
+            (call-interactively 'ein:worksheet-clear-all-output)
+            (call-interactively 'ein:notebook-restart-session-command-hard)
+            (call-interactively 'beginning-of-buffer))
+        (message "Not in notebook buffer!"))))
+
+
+(defun ein:notebook-restart-session-command-hard ()
+   "Delete session on server side.  Start new session. Don't ask permission."
+  (interactive)
+  (aif ein:%notebook%
+          (ein:kernel-restart-session (ein:$notebook-kernel it))
+    (message "Not in notebook buffer!")))
 
 (defun ein:notebook-restart-session-command ()
    "Delete session on server side.  Start new session."

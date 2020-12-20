@@ -209,6 +209,12 @@ is used instead.  BUFFER-CALLBACK is called after notebook opened."
                (match-p (string-match-p "\\.ipynb$" filename)))
     (ein:process-open-notebook filename #'kill-buffer-if-not-modified)))
 
+
+(defun ein:maybe-open-file-as-notebook ()
+  (interactive)
+  (when (eq major-mode 'ein:ipynb-mode)
+    (call-interactively #'ein:process-find-file-callback)))
+
 (provide 'ein-process)
 
 ;;; ein-process.el ends here

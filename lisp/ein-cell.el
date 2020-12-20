@@ -235,9 +235,19 @@ WARNING: OBJ and SLOT are evaluated multiple times,
     (mailcap-unescape-mime-test (cdr (assq 'viewer viewer)) info)))
 
 (defun ein:insert-image (image)
+  ;; Try to insert the image, otherwise emit a warning message and proceed.
   (condition-case-unless-debug err
       (let ((buffer-undo-list t))
-        (insert-image image (ein:propertize-read-only ".")))
+        (if ein:slice-image
+            (destructuring-bind (&optional rows cols)
+                (when (listp ein:slice-image) ein:slice-image)
+              (insert-sliced-image
+               image
+               (ein:propertize-read-only ".")
+               nil
+               (or rows 20)
+               cols))
+          (insert-image image (ein:propertize-read-only "."))))
     (error (ein:log 'warn "Could not insert image: %s" (error-message-string err)))))
 
 (defun ein:cell-class-from-type (type)
