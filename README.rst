@@ -6,8 +6,8 @@ I wanted to hack around a bit on
 `EIN <https://github.com/millejoh/emacs-ipython-notebook/>`__, so I
 made this fork.
 
-**If you make changes, make sure to uncomment ``package-generate-autoloads`` in your
-config so that the ``ein-autoloads.el`` file gets updated correctly.**.
+**If you make changes, make sure to uncomment package-generate-autoloads in your
+config so that the ein-autoloads.el file gets updated correctly.**.
 
 
 Installing
