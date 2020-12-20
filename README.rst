@@ -1,6 +1,110 @@
 ==========================================================
- EIN -- Emacs IPython Notebook |build-status| |melpa-dev|
+ EIN - Emacs IPython Notebook (Peter's Fork)
 ==========================================================
+
+I wanted to hack around a bit on
+`EIN <https://github.com/millejoh/emacs-ipython-notebook/>`__, so I
+made this fork.
+
+**If you make changes, make sure to uncomment ``package-generate-autoloads`` in your
+config so that the ``ein-autoloads.el`` file gets updated correctly.**.
+
+
+Installing
+=====
+
+This config shows how I install. It's a bit hacky, but oh well. Replace
+``~/.emacs.d/lisp/emacs-ipython-notebook`` with your local path to the repo.
+
+This requires `python-black <https://github.com/wbolster/emacs-python-black>__` as
+well as the ``black`` package itself. Do ``pip install black`` to get the latter.
+
+.. code:: elisp
+
+   (use-package ein
+     :ensure nil
+     :init
+     (add-hook 'ein:notebook-mode-hook 'jedi:setup)
+     ;; only do package-generate-autoloads when you're making changes. In general, you
+     ;; won't need to update the autoloads.
+     ;; (package-generate-autoloads "ein" "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/")
+     (load-file "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/ein-autoloads.el")
+     :config
+     ;; open .ipynb files as notebooks when visited
+     (add-hook 'find-file-hook 'ein:maybe-open-file-as-notebook)
+     :custom
+     (ein:completion-backend 'ein:use-ac-backend) ;; ac-jedi-backend doesn't work
+     (ein:complete-on-dot t)
+     (ein:truncate-long-cell-output nil)
+     (ein:auto-save-on-execute t)
+     (ein:auto-black-on-execute t)
+     (ein:output-area-inlined-images t) ;; not necessary in older versions
+     (ein:slice-image t)
+     ;; I set the URL explicitly, since I run my notebook servers from the terminal and
+     ;; access them by URL in EIN
+     (ein:urls "8888")
+     :bind
+     ("C-c C-x C-c" . ein:worksheet-clear-all-output)
+     ("C-c C-x C-k" . ein:nuke-and-pave)
+     ;; black-cell isn't really useful if you auto-black-on-execute
+     ("C-c b c" . ein:worksheet-python-black-cell)
+     ("C-c C-x C-f" . ein:new-notebook))
+
+You don’t have to include all that, obviously, but that’s my config.
+
+Changes
+=======
+
+``slice-image``
+---------------
+
+I reinstated the ``slice-image`` functionality, which you can see in the
+definition of ``ein:insert-image`` in ``ein-cell.el``. This was removed
+from EIN, but I liked using it.
+
+Autosave
+--------
+
+if ``ein:auto-save-on-execute`` is non-nil, then the notebook is saved
+on each cell execution.
+
+Blacken cell
+------------
+
+There is an ``ein:worksheet-python-black-cell`` function that blackens
+the current cell. This will fail if the cell is not syntactically valid
+python code (e.g. markdown).
+
+There is also an ``ein:auto-black-on-execute`` argument that will (if
+non-nil) use black to format cells upon execution.
+
+TODO Rework this so that the user can still import EIN without having
+``python-black`` installed.
+
+Nuke and pave
+-------------
+
+Added ``ein:nuke-and-pave`` which clears all output, restarts kernel,
+and moves cursor to the start of the buffer.
+
+Open file as notebook
+---------------------
+
+Added ``ein:maybe-open-file-as-notebook``, which will open a notebook
+buffer corresponding to the buffer if the buffer is in ``ipynb-mode``.
+It’s good to add this to the ``find-file-hook`` so that notebooks get
+automatically opened upon visiting.
+
+New notebook
+------------
+
+Added ``ein:new-notebook`` that just created an empty ``.ipynb`` file
+from a template, and visits the file. This works in conjunction with the
+above ``ein:maybe-open-file-as-notebook`` so that when the file is
+visited, it is opened as a notebook.
+
+BEGIN ORIGINAL README
+=====================
 
 .. image:: https://github.com/dickmao/emacs-ipython-notebook/blob/master/thumbnail.png
    :target: https://youtu.be/8VzWc9QeOxE
@@ -172,7 +276,7 @@ Keymap (C-h m)
 
    key             binding
    ---             -------
-   
+
    C-c		Prefix Command
    C-x		Prefix Command
    ESC		Prefix Command
@@ -181,14 +285,14 @@ Keymap (C-h m)
    <M-S-return>	ein:worksheet-execute-cell-and-insert-below-km
    <M-down>	ein:worksheet-not-move-cell-down-km
    <M-up>		ein:worksheet-not-move-cell-up-km
-   
+
    C-x C-s		ein:notebook-save-notebook-command-km
    C-x C-w		ein:notebook-rename-command-km
-   
+
    M-RET		ein:worksheet-execute-cell-and-goto-next-km
    M-,		ein:pytools-jump-back-command
    M-.		ein:pytools-jump-to-source-command
-   
+
    C-c C-a		ein:worksheet-insert-cell-above-km
    C-c C-b		ein:worksheet-insert-cell-below-km
    C-c C-c		ein:worksheet-execute-cell-km
@@ -219,7 +323,7 @@ Keymap (C-h m)
    C-c C-;		ein:shared-output-show-code-cell-at-point-km
    C-c <down>	ein:worksheet-move-cell-down-km
    C-c <up>	ein:worksheet-move-cell-up-km
-   
+
    C-c C-x C-r	ein:notebook-restart-session-command-km
-   
+
    C-c M-w		ein:worksheet-copy-cell-km
