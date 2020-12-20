@@ -13,11 +13,22 @@ config so that the ``ein-autoloads.el`` file gets updated correctly.**.
 Installing
 =====
 
-This config shows how I install. It's a bit hacky, but oh well. Replace
-``~/.emacs.d/lisp/emacs-ipython-notebook`` with your local path to the repo.
+I install via running the following lines on initialization:
+
+.. code:: elisp
+
+     (package-generate-autoloads "ein" "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/")
+     (load-file "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/ein-autoloads.el")
+
+I recommend commenting out the ``package-generate-autoloads`` call unless you're
+actively working on the repo. Otherwise, it will needlessly update the autoloads when no
+changes have been made.
 
 This requires `python-black <https://github.com/wbolster/emacs-python-black>__` as
 well as the ``black`` package itself. Do ``pip install black`` to get the latter.
+
+Below is my full config. Replace ``~/.emacs.d/lisp/emacs-ipython-notebook`` with your
+local path to the repo.
 
 .. code:: elisp
 
@@ -25,8 +36,7 @@ well as the ``black`` package itself. Do ``pip install black`` to get the latter
      :ensure nil
      :init
      (add-hook 'ein:notebook-mode-hook 'jedi:setup)
-     ;; only do package-generate-autoloads when you're making changes. In general, you
-     ;; won't need to update the autoloads.
+     ;; only do package-generate-autoloads when you're making changes.
      ;; (package-generate-autoloads "ein" "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/")
      (load-file "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/ein-autoloads.el")
      :config
@@ -49,8 +59,6 @@ well as the ``black`` package itself. Do ``pip install black`` to get the latter
      ;; black-cell isn't really useful if you auto-black-on-execute
      ("C-c b c" . ein:worksheet-python-black-cell)
      ("C-c C-x C-f" . ein:new-notebook))
-
-You don’t have to include all that, obviously, but that’s my config.
 
 Changes
 =======
