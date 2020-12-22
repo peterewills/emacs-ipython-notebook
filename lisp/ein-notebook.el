@@ -118,7 +118,7 @@
       (not (string-suffix-p ".ipynb" path))
     (setq path (concat path ".ipynb"))
     (let ((filename
-           (car (last (split-string "/Users/peterwills/tmp.tmp" "/")))))
+           (car (last (split-string path "/")))))
       (write-region (ein:get-blank-notebook-string filename) nil path))
     (find-file path)))
 
