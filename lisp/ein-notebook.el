@@ -68,17 +68,21 @@
    \"cell_type\": \"code\",
    \"execution_count\": null,
    \"metadata\": {
-    \"autoscroll\": false,
-    \"collapsed\": false,
-    \"ein.hycell\": false,
-    \"ein.tags\": \"worksheet-0\",
-    \"slideshow\": {
-     \"slide_type\": \"-\"
-    }
+    \"collapsed\": false
    },
    \"outputs\": [],
-   \"source\": []
-  }
+   \"source\": [
+    \"import pandas as pd\n\",
+    \"import numpy as np\n\",
+    \"import datetime as dt\n\",
+    \"from matplotlib import pyplot as plt\n\",
+    \"\n\",
+    \"import logging\n\",
+    \"logging.basicConfig(level=logging.INFO)\n\",
+    \"logger = logging.getLogger()\"
+   ]
+  },
+
  ],
  \"metadata\": {
   \"kernelspec\": {
