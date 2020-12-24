@@ -63,17 +63,17 @@
 (make-obsolete-variable 'ein:notebook-after-rename-hook nil "0.17.0")
 
 (defconst ein:basic-imports "
-    \"import pandas as pd\n\",
-    \"import numpy as np\n\",
-    \"import datetime as dt\n\",
-    \"from matplotlib import pyplot as plt\n\",
-    \"\n\",
-    \"import logging\n\",
-    \"logging.basicConfig(level=logging.INFO)\n\",
-    \"logger = logging.getLogger()\",
-    \"\n\",
-    \"from r2d2.cache import DataFrameCache\n\",
-    \"cache = DataFrameCache()\n\",
+    \"import pandas as pd\\n\",
+    \"import numpy as np\\n\",
+    \"import datetime as dt\\n\",
+    \"from matplotlib import pyplot as plt\\n\",
+    \"\\n\",
+    \"import logging\\n\",
+    \"logging.basicConfig(level=logging.INFO)\\n\",
+    \"logger = logging.getLogger()\\n\",
+    \"\\n\",
+    \"from r2d2.cache import DataFrameCache\\n\",
+    \"cache = DataFrameCache()\\n\",
     \"query = cache.query\"
 ")
 
@@ -88,8 +88,7 @@
    },
    \"outputs\": [],
    \"source\": [%s]
-  },
-
+  }
  ],
  \"metadata\": {
   \"kernelspec\": {
@@ -125,16 +124,15 @@
   (interactive "FCreate new notebook: ")
   (when
       (not (string-suffix-p ".ipynb" path))
-    (setq path (concat path ".ipynb"))
-    (let ((filename
-           (car (last (split-string path "/"))))
-          (notebook-string
-           (ein:get-blank-notebook-string
-            filename
-            ;; (yes-or-no-p "Include imports? ")
-            t )))
-      (write-region notebook-string nil path))
-    (find-file path)))
+    (setq path (concat path ".ipynb")))
+  (let* ((filename
+          (car (last (split-string path "/"))))
+         (notebook-string
+          (ein:get-blank-notebook-string
+           filename
+           (yes-or-no-p "Include imports? "))))
+    (write-region notebook-string nil path))
+  (find-file path))
 
 (defvar *ein:notebook--pending-query* (make-hash-table :test 'equal)
   "A map: (URL-OR-PORT . PATH) => t/nil")
