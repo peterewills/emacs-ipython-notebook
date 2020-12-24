@@ -72,17 +72,16 @@
    },
    \"outputs\": [],
    \"source\": [
-    \"import pandas as pd\n\",
-    \"import numpy as np\n\",
-    \"import datetime as dt\n\",
-    \"from matplotlib import pyplot as plt\n\",
-    \"\n\",
-    \"import logging\n\",
-    \"logging.basicConfig(level=logging.INFO)\n\",
+    \"import pandas as pd\\n\",
+    \"import numpy as np\\n\",
+    \"import datetime as dt\\n\",
+    \"from matplotlib import pyplot as plt\\n\",
+    \"\\n\",
+    \"import logging\\n\",
+    \"logging.basicConfig(level=logging.INFO)\\n\",
     \"logger = logging.getLogger()\"
    ]
-  },
-
+  }
  ],
  \"metadata\": {
   \"kernelspec\": {
@@ -116,11 +115,14 @@
   (interactive "FCreate new notebook: ")
   (when
       (not (string-suffix-p ".ipynb" path))
-    (setq path (concat path ".ipynb"))
-    (let ((filename
-           (car (last (split-string path "/")))))
-      (write-region (ein:get-blank-notebook-string filename) nil path))
-    (find-file path)))
+    (setq path (concat path ".ipynb")))
+  (let ((filename
+         (car (last (split-string path "/")))))
+    (write-region
+     (ein:get-blank-notebook-string filename)
+     nil
+     path))
+  (find-file path))
 
 (defvar *ein:notebook--pending-query* (make-hash-table :test 'equal)
   "A map: (URL-OR-PORT . PATH) => t/nil")
