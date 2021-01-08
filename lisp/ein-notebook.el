@@ -763,7 +763,6 @@ NAME is any non-empty string that does not contain '/' or '\\'.
   "Kill kernel and then kill notebook buffer.
 To close notebook without killing kernel, just close the buffer
 as usual."
-  (declare (indent defun))
   (interactive (list (ein:notebook--get-nb-or-error) nil))
   (unless callback1 (setq callback1 #'ignore))
   (let* ((kernel (ein:$notebook-kernel notebook))
@@ -888,7 +887,10 @@ Tried add-function: the &rest from :around is an emacs-25 compilation issue."
     `(if ,docstring
          (progn
            (fset (quote ,km) (lambda () ,docstring (interactive)
-                               (poly-ein-base (call-interactively (function ,defn)))))
+                               (condition-case-unless-debug err
+                                   (poly-ein-base (call-interactively (function ,defn)))
+                                 (cl-no-method (message "%s: no applicable method" (quote ,km)))
+                                 (error (message "%s: %s" (quote ,km) (error-message-string err))))))
            (define-key ,keymap ,key (quote ,km)))
        (define-key ,keymap ,key (quote ,defn)))))
 

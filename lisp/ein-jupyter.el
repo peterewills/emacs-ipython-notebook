@@ -165,8 +165,9 @@ with the call to the jupyter notebook."
                                 ein:jupyter-docker-image)))
                       (t
                        (append (aif ein:jupyter-server-use-subcommand (list it))
-                               (list (format "--notebook-dir=%s"
-                                             (convert-standard-filename dir)))
+                               (when dir
+                                 (list (format "--notebook-dir=%s"
+                                               (convert-standard-filename dir))))
                                args
                                (let ((copy (cl-copy-list ein:jupyter-server-args)))
                                  (when (ein:debug-p)
@@ -187,12 +188,16 @@ with the call to the jupyter notebook."
           (goto-char (point-max))
           (re-search-backward (format "Process %s" *ein:jupyter-server-process-name*)
                               nil "") ;; important if we start-stop-start
-          (when (re-search-forward "\\([[:alnum:]]+\\) is\\( now\\)? running" nil t)
-            (let ((hub-p (cl-search "jupyterhub" (downcase (match-string 1)))))
-              (when (re-search-forward "\\(https?://[^:]*:[0-9]+\\)\\(?:/\\?token=\\([[:alnum:]]+\\)\\)?" nil t)
-                (let ((raw-url (match-string 1))
-                      (token (or (match-string 2) (and (not hub-p) ""))))
-                  (setq result (list (ein:url raw-url) token)))))))))
+          (-when-let* ((running-p
+                        (and (re-search-forward
+                              "\\([[:alnum:]]+\\) is\\( now\\)? running"
+                              nil t)
+                             (re-search-forward
+                              "\\(https?://[^:]*:[0-9]+\\)\\(?:/\\?token=\\([[:alnum:]]+\\)\\)?"
+                              nil t)))
+                       (raw-url (match-string 1))
+                       (token (or (match-string 2) "")))
+            (setq result (list (ein:url raw-url) token))))))
     result))
 
 (defun ein:jupyter-server-login-and-open (&optional callback)
@@ -207,7 +212,7 @@ via a call to `ein:notebooklist-open'."
   (when (ein:jupyter-server-process)
     (cl-multiple-value-bind (url-or-port _password) (ein:jupyter-server-conn-info)
       (if-let ((token (ein:notebooklist-token-or-password url-or-port)))
-	  (ein:notebooklist-login url-or-port callback nil token)
+	  (ein:notebooklist-login url-or-port callback nil nil token)
 	(ein:log 'error "`(ein:notebooklist-token-or-password %s)` must return non-nil"
 		 url-or-port)))))
 
@@ -295,8 +300,8 @@ server command."
                                  nil nil ein:jupyter-server-command))))))
                  result)
              default-command))
-         (let (result
-               (default-dir ein:jupyter-default-notebook-directory))
+         (let ((default-dir ein:jupyter-default-notebook-directory)
+               result)
            (while (or (not result) (not (file-directory-p result)))
              (setq result (read-directory-name
                            (format "%sNotebook directory: "

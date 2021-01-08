@@ -205,6 +205,7 @@ at point, i.e. any word before then \"(\", if it is present."
     (when (or (integerp url-or-port)
               (and (stringp url-or-port) (string-match "^[0-9]+$" url-or-port)))
       (setq url-or-port (format "http://localhost:%s" url-or-port)))
+    (setq url-or-port (string-trim url-or-port))
     (cl-flet ((localhost-p (host) (or (string= host "localhost")
                                       (string= host ein:url-localhost)
                                       (string= host ""))))
@@ -390,7 +391,8 @@ Adapted from twittering-mode.el's `case-string'."
                             (car (cl-second args))
                           (cl-second args)))
         ((eq completing-read-function 'completing-read-default)
-         (apply #'ido-completing-read args))
+         (cl-letf (((symbol-function 'ido-completion-help) #'self-insert-command))
+           (apply #'ido-completing-read args)))
         (t (apply completing-read-function args))))
 
 (defun ein:plist-iter (plist)
