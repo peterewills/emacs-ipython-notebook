@@ -24,8 +24,8 @@ I recommend commenting out the ``package-generate-autoloads`` call unless you're
 actively working on the repo. Otherwise, it will needlessly update the autoloads when no
 changes have been made.
 
-This requires `python-black <https://github.com/wbolster/emacs-python-black>__` as
-well as the ``black`` package itself. Do ``pip install black`` to get the latter.
+This requires the emacs package ``python-black`` as well as the python package
+``black``. Do ``pip install black`` to get the latter.
 
 Below is my full config. Replace ``~/.emacs.d/lisp/emacs-ipython-notebook`` with your
 local path to the repo.
