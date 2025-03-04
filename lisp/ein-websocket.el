@@ -111,13 +111,16 @@
     websocket))
 
 (defun ein:websocket-open-p (websocket)
-  (eql (websocket-ready-state (ein:$websocket-ws websocket)) 'open))
+  (and websocket 
+       (ein:$websocket-ws websocket)
+       (eql (websocket-ready-state (ein:$websocket-ws websocket)) 'open)))
 
 
 (defun ein:websocket-send (websocket text)
   ;;  (ein:log 'info "WS: Sent message %s" text)
   (condition-case-unless-debug err
-      (websocket-send-text (ein:$websocket-ws websocket) text)
+      (when websocket
+        (websocket-send-text (ein:$websocket-ws websocket) text))
     (error (message "Error %s on sending websocket message %s." err text))))
 
 
@@ -127,22 +130,26 @@
 
 
 (defun ein:websocket-send-shell-channel (kernel msg)
-  (cond ((= (ein:$kernel-api-version kernel) 2)
+  (cond ((and (= (ein:$kernel-api-version kernel) 2)
+              (ein:$kernel-shell-channel kernel)
+              (ein:$websocket-p (ein:$kernel-shell-channel kernel)))
          (ein:websocket-send
           (ein:$kernel-shell-channel kernel)
           (ein:json-encode msg)))
-        ((>= (ein:$kernel-api-version kernel) 3)
+        ((ein:$kernel-websocket kernel)
          (ein:websocket-send
           (ein:$kernel-websocket kernel)
-          (ein:json-encode (plist-put msg :channel "shell"))))))
+          (ein:json-encode (plist-put msg :channel "shell"))))
+        (t (ein:log 'warn "Kernel %s has no shell channel" (ein:$kernel-kernel-id kernel)))))
 
 (defun ein:websocket-send-stdin-channel (kernel msg)
   (cond ((= (ein:$kernel-api-version kernel) 2)
          (ein:log 'warn "Stdin messages only supported with IPython 3."))
-        ((>= (ein:$kernel-api-version kernel) 3)
+        ((ein:$kernel-websocket kernel)
          (ein:websocket-send
           (ein:$kernel-websocket kernel)
-          (ein:json-encode (plist-put msg :channel "stdin"))))))
+          (ein:json-encode (plist-put msg :channel "stdin"))))
+        (t (ein:log 'warn "Kernel %s has no stdin channel" (ein:$kernel-kernel-id kernel)))))
 
 (provide 'ein-websocket)
 

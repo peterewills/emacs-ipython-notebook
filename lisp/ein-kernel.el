@@ -78,7 +78,7 @@ argument, which is the kernel that was just connected."
    :path path
    :kernelspec kernelspec
    :events events
-   :api-version (or api-version 5)
+   :api-version (or api-version 2)
    :session-id (ein:utils-uuid)
    :kernel-id nil
    :websocket nil
@@ -168,11 +168,9 @@ CALLBACK of arity 1, the kernel.
 "
   (unless iteration
     (setq iteration 0))
-  (if (<= (ein:$kernel-api-version kernel) 2)
-      (error "Api %s unsupported" (ein:$kernel-api-version kernel))
-    (let ((kernel-id (ein:$kernel-kernel-id kernel))
-          (kernelspec (ein:$kernel-kernelspec kernel))
-          (path (ein:$kernel-path kernel)))
+  (let ((kernel-id (ein:$kernel-kernel-id kernel))
+        (kernelspec (ein:$kernel-kernelspec kernel))
+        (path (ein:$kernel-path kernel)))
       (ein:query-singleton-ajax
        (ein:url (ein:$kernel-url-or-port kernel) "api/sessions")
        :type "POST"
@@ -187,7 +185,7 @@ CALLBACK of arity 1, the kernel.
        :parser #'ein:json-read
        :complete (apply-partially #'ein:kernel-retrieve-session--complete kernel callback)
        :success (apply-partially #'ein:kernel-retrieve-session--success kernel callback)
-       :error (apply-partially #'ein:kernel-retrieve-session--error kernel iteration callback)))))
+       :error (apply-partially #'ein:kernel-retrieve-session--error kernel iteration callback))))
 
 (cl-defun ein:kernel-retrieve-session--complete
     (_kernel _callback
@@ -218,7 +216,11 @@ CALLBACK of arity 1, the kernel.
       (setf (ein:$kernel-session-id kernel) session-id)
       (setf (ein:$kernel-ws-url kernel) (ein:kernel--ws-url (ein:$kernel-url-or-port kernel)))
       (setf (ein:$kernel-kernel-url kernel)
-            (concat (file-name-as-directory (ein:$kernel-base-url kernel)) id)))
+            (concat (file-name-as-directory (ein:$kernel-base-url kernel)) id))
+      ;; Make sure we set either shell-channel or websocket to handle all channels
+      (if (= (ein:$kernel-api-version kernel) 2)
+          (setf (ein:$kernel-shell-channel kernel) nil)
+        (setf (ein:$kernel-shell-channel kernel) t)))
     (ein:kernel-start-websocket kernel callback)))
 
 (defun ein:kernel-reconnect-session (kernel &optional callback)
@@ -295,9 +297,7 @@ See https://github.com/ipython/ipython/pull/3307"
                           open-callback)))))
 
 (defun ein:kernel-start-websocket (kernel callback)
-  (cond ((<= (ein:$kernel-api-version kernel) 2)
-         (error "Api version %s unsupported" (ein:$kernel-api-version kernel)))
-        (t (ein:start-single-websocket kernel callback))))
+  (ein:start-single-websocket kernel callback))
 
 (defun ein:kernel-on-connect (_kernel _content _metadata)
   (ein:log 'info "Kernel connect_request_reply received."))
@@ -312,7 +312,8 @@ delete the kernel on the server side"
 
 (defun ein:kernel-live-p (kernel)
   (and (ein:$kernel-p kernel)
-       (ein:aand (ein:$kernel-websocket kernel) (ein:websocket-open-p it))))
+       (ein:$kernel-websocket kernel)
+       (ein:websocket-open-p (ein:$kernel-websocket kernel))))
 
 (defun ein:kernel-when-ready (kernel callback)
   "Execute CALLBACK of arity 1 (the kernel) when KERNEL is ready.  Warn user otherwise."
@@ -339,8 +340,6 @@ http://ipython.org/ipython-doc/dev/development/messaging.html#object-information
 "
   (cl-assert (ein:kernel-live-p kernel) nil "object_info_reply: Kernel is not active.")
   (when objname
-    (if (<= (ein:$kernel-api-version kernel) 2)
-        (error "Api version %s unsupported" (ein:$kernel-api-version kernel)))
     (let* ((content (if (< (ein:$kernel-api-version kernel) 5)
                         (list
                          ;; :text ""

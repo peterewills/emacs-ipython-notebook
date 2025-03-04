@@ -304,7 +304,11 @@ where `created' indicates a new notebook or an existing one."
           (ein:content-query-contents url-or-port path
                                       (apply-partially #'ein:notebook-open--callback
                                                        notebook callback0)
-                                      errback))))
+                                      (lambda (url-or-port* response-status)
+                                        (ein:log 'error 
+                                                "Notebook could not be opened with path %s (response status %s)"
+                                                path response-status)
+                                        (funcall errback url-or-port* response-status))))))
     notebook))
 
 (defun ein:notebook-open--callback (notebook callback0 content)

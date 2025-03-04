@@ -1,4 +1,4 @@
-;;; ein-process.el --- Notebook list buffer    -*- lexical-binding:t -*-
+;; ein-process.el --- Notebook list buffer    -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018- John M. Miller
 
@@ -41,41 +41,30 @@
   "Returns notebook-dir or cwd of PID.  Supply ERROR-BUFFER to capture stderr"
   (if (string-match "\\bnotebook-dir\\(=\\|\\s-+\\)\\(\\S-+\\)" args)
       (directory-file-name (match-string 2 args))
-    (if (executable-find ein:process-lsof)
-        (ein:trim-right
-         (with-output-to-string
-           (shell-command (format "%s -p %d -a -d cwd -Fn | grep ^n | tail -c +2"
-                                  ein:process-lsof pid)
-                          standard-output error-buffer))))))
+    (when (executable-find ein:process-lsof)
+      (ein:trim-right
+       (with-output-to-string
+         (shell-command (format "%s -p %d -a -d cwd -Fn | grep ^n | tail -c +2"
+                                ein:process-lsof pid)
+                        standard-output error-buffer))))))
 
 (defun ein:process-divine-port (pid args &optional error-buffer)
   "Returns port on which PID is listening or 0 if none.  Supply ERROR-BUFFER to capture stderr"
   (if (string-match "\\bport\\(=\\|\\s-+\\)\\(\\S-+\\)" args)
       (string-to-number (match-string 2 args))
-    (if (executable-find ein:process-lsof)
-        (string-to-number
-         (ein:trim-right
-          (with-output-to-string
-            (shell-command (format "%s -p %d -a -iTCP -sTCP:LISTEN -Fn | grep ^n | sed \"s/[^0-9]//g\""
-                                   ein:process-lsof pid)
-                           standard-output error-buffer)))))))
+    (when (executable-find ein:process-lsof)
+      (string-to-number
+       (ein:trim-right
+        (with-output-to-string
+          (shell-command (format "%s -p %d -a -iTCP -sTCP:LISTEN -Fn | grep ^n | sed \"s/[^0-9]//g\""
+                                 ein:process-lsof pid)
+                         standard-output error-buffer)))))))
 
 (defun ein:process-divine-ip (_pid args)
   "Returns notebook-ip of PID"
   (if (string-match "\\bip\\(=\\|\\s-+\\)\\(\\S-+\\)" args)
       (match-string 2 args)
     ein:url-localhost))
-
-(defcustom ein:process-jupyter-regexp "\\(jupyter\\|ipython\\)\\(-\\|\\s-+\\)note"
-  "Regexp by which we recognize notebook servers."
-  :type 'string
-  :group 'ein)
-
-
-(defcustom ein:process-lsof "lsof"
-  "Executable for lsof command."
-  :type 'string
-  :group 'ein)
 
 (cl-defstruct ein:$process
   "Hold process variables.
@@ -90,16 +79,17 @@
   Arg of --notebook-dir or 'readlink -e /proc/<pid>/cwd'."
   pid
   url
-  dir
-)
+  dir)
 
 (ein:deflocal ein:%processes% (make-hash-table :test #'equal)
   "Process table of `ein:$process' keyed on dir.")
 
 (defun ein:process-processes ()
+  "Return list of processes."
   (hash-table-values ein:%processes%))
 
 (defun ein:process-alive-p (proc)
+  "Check if the PROC is still alive."
   (not (null (process-attributes (ein:$process-pid proc)))))
 
 (defun ein:process-suitable-notebook-dir (filename)
@@ -122,19 +112,27 @@
   (cl-loop for line in (condition-case err
                            (apply #'process-lines
                                   ein:jupyter-server-command
-                                  (append (aif ein:jupyter-server-use-subcommand
-                                              (list it))
+                                  (append (when ein:jupyter-server-use-subcommand
+                                            (list ein:jupyter-server-use-subcommand))
                                           '("list" "--json")))
                          ;; often there is no local jupyter installation
                          (error (ein:log 'info "ein:process-refresh-processes: %s" err) nil))
            do (cl-destructuring-bind
                   (&key pid url notebook_dir &allow-other-keys)
                   (ein:json-read-from-string line)
-                (puthash (directory-file-name notebook_dir)
-                         (make-ein:$process :pid pid
-                                            :url (ein:url url)
-                                            :dir (directory-file-name notebook_dir))
-                         ein:%processes%))))
+                (when (and pid url)
+                  (if notebook_dir
+                      (puthash (directory-file-name notebook_dir)
+                             (make-ein:$process :pid pid
+                                                :url (ein:url url)
+                                                :dir (directory-file-name notebook_dir))
+                             ein:%processes%)
+                    ;; For servers without notebook_dir (like JupyterHub)
+                    (puthash "/" 
+                             (make-ein:$process :pid pid
+                                                :url (ein:url url)
+                                                :dir "/")
+                             ein:%processes%))))))
 
 (defun ein:process-dir-match (filename)
   "Return ein:process whose directory is prefix of FILENAME."
@@ -209,11 +207,54 @@ is used instead.  BUFFER-CALLBACK is called after notebook opened."
                (match-p (string-match-p "\\.ipynb$" filename)))
     (ein:process-open-notebook filename #'kill-buffer-if-not-modified)))
 
+(defcustom ein:notebook-default-home-directory nil
+  "Default directory for Jupyter notebooks.
+If set, this directory will be used as the Jupyter home directory
+when opening notebooks. This solves path resolution issues when
+the Jupyter server is started in a different directory than your notebooks.
+If nil, EIN will try to determine the directory automatically."
+  :type '(choice (const :tag "Auto" nil)
+                 (directory :tag "Directory"))
+  :group 'ein)
 
 (defun ein:maybe-open-file-as-notebook ()
   (interactive)
   (when (eq major-mode 'ein:ipynb-mode)
-    (call-interactively #'ein:process-find-file-callback)))
+    ;; More straightforward direct approach 
+    (let* ((filename buffer-file-name)
+           (home-dir (expand-file-name "~"))
+           (url-or-port "http://127.0.0.1:8888")
+           (expected-dir (or ein:notebook-default-home-directory home-dir))
+           (rel-path nil))
+      
+      ;; Debug logging
+      (ein:log 'info "Notebook file: %s" filename)
+      (ein:log 'info "Expected Jupyter dir: %s" expected-dir)
+      
+      ;; Calculate path relative to home directory
+      (if (string-prefix-p expected-dir filename)
+          (progn
+            ;; Get path relative to home directory
+            (setq rel-path (substring filename 
+                                     (length (file-name-as-directory expected-dir))))
+            (ein:log 'info "Using relative path: %s" rel-path))
+        ;; Not in home dir, try code/notebooks subdirectory
+        (let ((code-path (expand-file-name "code/notebooks" expected-dir)))
+          (if (string-prefix-p code-path filename)
+              (progn
+                (setq rel-path (concat "code/notebooks/" 
+                                      (file-name-nondirectory filename)))
+                (ein:log 'info "Using code/notebooks/ path: %s" rel-path))
+            ;; Just use filename as last resort
+            (setq rel-path (file-name-nondirectory filename))
+            (ein:log 'info "Using just filename: %s" rel-path))))
+      
+      ;; Try to open with calculated path
+      (ein:log 'info "Opening notebook at %s with path: %s" url-or-port rel-path)
+      (ein:notebook-open url-or-port rel-path nil 
+                        (lambda (_notebook _created)
+                          (when (buffer-live-p (current-buffer))
+                            (kill-buffer-if-not-modified (current-buffer))))))))
 
 (provide 'ein-process)
 
