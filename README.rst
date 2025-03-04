@@ -9,6 +9,8 @@ made this fork.
 **If you make changes, make sure to uncomment package-generate-autoloads in your
 config so that the ein-autoloads.el file gets updated correctly.**.
 
+TODO ein:nuke-and-pave doesn't work
+
 
 Installing
 =====
@@ -31,34 +33,34 @@ Below is my full config. Replace ``~/.emacs.d/lisp/emacs-ipython-notebook`` with
 local path to the repo.
 
 .. code:: elisp
-
-   (use-package ein
-     :ensure nil
-     :init
-     (add-hook 'ein:notebook-mode-hook 'jedi:setup)
-     ;; only do package-generate-autoloads when you're making changes.
-     ;; (package-generate-autoloads "ein" "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/")
-     (load-file "~/.emacs.d/lisp/emacs-ipython-notebook/lisp/ein-autoloads.el")
-     :config
-     ;; open .ipynb files as notebooks when visited
-     (add-hook 'find-file-hook 'ein:maybe-open-file-as-notebook)
-     :custom
-     (ein:completion-backend 'ein:use-ac-backend) ;; ac-jedi-backend doesn't work
-     (ein:complete-on-dot t)
-     (ein:truncate-long-cell-output nil)
-     (ein:auto-save-on-execute t)
-     (ein:auto-black-on-execute t)
-     (ein:output-area-inlined-images t) ;; not necessary in older versions
-     (ein:slice-image t)
-     ;; I set the URL explicitly, since I run my notebook servers from the terminal and
-     ;; access them by URL in EIN
-     (ein:urls "8888")
-     :bind
-     ("C-c C-x C-c" . ein:worksheet-clear-all-output)
-     ("C-c C-x C-k" . ein:nuke-and-pave)
-     ;; black-cell isn't really useful if you auto-black-on-execute
-     ("C-c b c" . ein:worksheet-python-black-cell)
-     ("C-c C-x C-f" . ein:new-notebook))
+(use-package ein
+  :ensure nil
+  :init
+  (add-hook 'ein:notebook-mode-hook 'jedi:setup)
+  (package-generate-autoloads "ein" "/Users/peter.wills@equipmentshare.com/.emacs.d/lisp/emacs-ipython-notebook/lisp/")
+  (load-file
+   "/Users/peter.wills@equipmentshare.com/.emacs.d/lisp/emacs-ipython-notebook/lisp/ein-autoloads.el")
+  (load-file
+   "/Users/peter.wills@equipmentshare.com/.emacs.d/lisp/emacs-ipython-notebook/lisp/ein-init.el")
+  :config
+  ;; open files as ipython notebooks automagically
+  (add-hook 'ein:ipynb-mode-hook 'ein:maybe-open-file-as-notebook)
+  :custom
+  (ein:completion-backend 'ein:use-ac-backend) ;; ac-jedi-backend doesn't work
+  (ein:complete-on-dot t)
+  (ein:truncate-long-cell-output nil)
+  (ein:auto-save-on-execute t)
+  (ein:auto-black-on-execute t)
+  (ein:output-area-inlined-images t)
+  (ein:slice-image t)
+  (ein:urls "http://127.0.0.1:8888")
+  (ein:notebook-default-home-directory "/Users/peter.wills@equipmentshare.com")
+  :bind
+  ("C-x M-w" . ein:notebook-save-to-command)
+  ("C-c C-x C-c" . ein:worksheet-clear-all-output)
+  ("C-c C-x C-k" . ein:nuke-and-pave)
+  ("C-c C-x C-f" . ein:new-notebook)
+  ("C-c b c" . ein:worksheet-python-black-cell))
 
 Changes
 =======
