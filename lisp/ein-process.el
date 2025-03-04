@@ -225,7 +225,8 @@ If nil, EIN will try to determine the directory automatically."
            (home-dir (expand-file-name "~"))
            (url-or-port "http://127.0.0.1:8888")
            (expected-dir (or ein:notebook-default-home-directory home-dir))
-           (rel-path nil))
+           (rel-path nil)
+           (log-buffer-name ein:log-all-buffer-name))
       
       ;; Debug logging
       (ein:log 'info "Notebook file: %s" filename)
@@ -253,8 +254,17 @@ If nil, EIN will try to determine the directory automatically."
       (ein:log 'info "Opening notebook at %s with path: %s" url-or-port rel-path)
       (ein:notebook-open url-or-port rel-path nil 
                         (lambda (_notebook _created)
+                          ;; Kill the original buffer
                           (when (buffer-live-p (current-buffer))
-                            (kill-buffer-if-not-modified (current-buffer))))))))
+                            (kill-buffer-if-not-modified (current-buffer)))
+                          ;; Kill the log buffer
+                          (when (get-buffer log-buffer-name)
+                            (kill-buffer log-buffer-name))
+                          ;; Kill the Messages buffer as well
+                          (when (get-buffer "*Messages*")
+                            (let ((buf (get-buffer "*Messages*")))
+                              (when (get-buffer-window buf)
+                                (delete-window (get-buffer-window buf))))))))))
 
 (provide 'ein-process)
 
